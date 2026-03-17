@@ -4,7 +4,7 @@ set -euo pipefail
 
 SEARXNG="${SEARXNG_URL:-http://localhost:8890}/search"
 DATE=$(date +%Y-%m-%d)
-REPORT_DIR="${REPORT_DIR:-$HOME/.openclaw/tech-scout/reports}"
+REPORT_DIR="${REPORT_DIR:-/Volumes/Shared Documents/DaVinci/tech-scout-reports}"
 REPORT="$REPORT_DIR/${DATE}-scout-report.md"
 
 mkdir -p "$REPORT_DIR"
