@@ -5,111 +5,104 @@ description: Daily automated scan for practical AI and dev tools. Searches GitHu
 
 # Tech Scout — Daily Tool Discovery
 
-## Full Workflow
+## Trigger
+This skill runs as a **self-contained process**. When triggered:
+1. The agent executes ALL steps below in order
+2. Saves the report to disk
+3. Announces the top finds
+4. Done — no human intervention needed
 
-When triggered (by cron or manually), execute ALL steps in order:
+Triggers: "run tech scout", "find new tools", "what's new in AI tools", daily cron, or any request for new tool discovery.
 
-### Step 1: Gather (SearXNG)
-Run the gather script to search across all sources:
+## Step 1: Gather (zero tokens)
+Run the gather script to search all sources via SearXNG:
 ```bash
-bash scripts/gather.sh
+bash <skill-dir>/scripts/gather.sh
 ```
-This creates a raw report at `${REPORT_DIR}/YYYY-MM-DD-scout-report.md`
+Report lands at `/Volumes/Shared Documents/DaVinci/tech-scout-reports/YYYY-MM-DD-scout-report.md`
 
-### Step 2: Verify Each Find (web_fetch + agent-browser)
-For every item in the raw report:
-1. **web_fetch** the project URL — read the README, check what it actually does
-2. If the page is a SPA or needs JS, use **agent-browser** instead
-3. Check: is it actively maintained? When was the last commit/release?
+If SearXNG is down, fall back to `web_fetch` + manual search queries.
+
+## Step 2: Read the Raw Report
+```bash
+cat /Volumes/Shared Documents/DaVinci/tech-scout-reports/$(date +%Y-%m-%d)-scout-report.md
+```
+
+## Step 3: Verify Each Promising Find
+For every item that looks real (not a listicle, guide, or blog spam):
+1. **web_fetch** the project URL — read the README
+2. If the page needs JS rendering, use **agent-browser** instead
+3. Check: actively maintained? Last commit/release date?
 4. Check: what are the actual install steps?
 
-### Step 3: Apply Filter (ruthlessly)
+**Do NOT announce anything you haven't verified by reading the project page.**
+
+## Step 4: Apply Filter (ruthlessly)
 Every find MUST pass ALL four tests:
 
-| Test | Question | Fail = Skip |
-|------|----------|-------------|
-| ✅ Installable | Can we `npm/brew/pip/docker install` it TODAY? | Skip |
-| ✅ Useful | Does it solve a REAL problem we have? | Skip |
-| ✅ Local | Does it run locally or self-hosted? | Skip |
-| ✅ Tool | Is it a TOOL, not a framework/platform/theory? | Skip |
+| Test | Question |
+|------|----------|
+| ✅ Installable | Can we `npm/brew/pip/docker install` it TODAY? |
+| ✅ Useful | Does it solve a REAL problem we have? |
+| ✅ Local | Does it run locally or self-hosted? |
+| ✅ Tool | Is it a TOOL, not a framework/platform/theory? |
 
-**No "looks promising" or "might be useful someday." If it doesn't pass all 4, kill it.**
+Fail any one → skip it. No "looks promising" or "might be useful someday."
 
-### Step 4: Write Report
-Save the verified report (up to 10 tools) to the reports directory.
+## Step 5: Write Verified Report
+Overwrite today's report with the verified version. Format per tool:
 
-Report format per tool:
 ```markdown
 ### [Tool Name](url)
-**What:** One sentence description
+**What:** One sentence
 **Install:** `npm i -g tool` or `docker compose up`
-**Why it matters:** One sentence on what problem it solves
+**Why it matters:** What problem it solves for us
 **Last updated:** date or "active"
 **Verdict:** ✅ INSTALL / 👀 WATCH / ❌ SKIP
 ```
 
-### Step 5: Announce (Top 5 only)
-Post a brief summary — **maximum 5 tools**, even if the report has 10.
+Maximum 10 tools in the report. Quality over quantity.
 
-Format:
+## Step 6: Announce Top Finds
+Post a summary of the **top 1-5 verified tools only**:
+
 ```
-🔍 **Tech Scout — YYYY-MM-DD**
+🔍 Tech Scout — YYYY-MM-DD
 
 1. **Tool Name** — what it does (`install command`)
 2. **Tool Name** — what it does (`install command`)
-3. ...
 
-Full report saved to reports/
+Full report: /Volumes/Shared Documents/DaVinci/tech-scout-reports/
 ```
 
 If nothing passes the filter: `🔍 Tech Scout — Nothing notable today.`
 
 ## What We're Looking For
-- CLI tools (npm/brew/pip)
+- CLI tools installable via npm/brew/pip
 - Self-hosted Docker apps
 - Local TTS/STT/voice tools
 - Local LLM/AI inference tools
-- Browser automation & scraping
+- Browser automation & scraping tools
 - Memory/RAG systems
 - Agent orchestration tools
+- Productivity/workflow CLI tools
 
 ## What We're NOT Looking For
 - AI ecosystem news or opinions
 - Frameworks we'd need to build around
 - Cloud-only services
 - Anything requiring major infrastructure changes
-
-## Sources
-1. **GitHub** — New releases, trending repos
-2. **Hacker News** — "Show HN" posts
-3. **Reddit** — r/selfhosted, r/LocalLLaMA
-4. **PyPI / npm** — New packages
-
-## Cron Setup (OpenClaw)
-
-```json5
-{
-  name: "tech-scout",
-  schedule: { kind: "cron", expr: "0 7 * * *", tz: "Your/Timezone" },
-  sessionTarget: "isolated",
-  payload: {
-    kind: "agentTurn",
-    message: "You are a Tech Scout agent. Read and follow the tech-scout skill. Execute the FULL workflow: gather, verify, filter, report, announce top 5. Do NOT announce anything you haven't verified by reading the project page.",
-    model: "kimi"
-  },
-  delivery: { mode: "announce" }
-}
-```
+- Listicles, "ultimate guides", "top 10" articles
 
 ## Environment
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `SEARXNG_URL` | `http://localhost:8890` | SearXNG instance |
-| `REPORT_DIR` | `~/.openclaw/tech-scout/reports` | Report output directory |
+| `REPORT_DIR` | `/Volumes/Shared Documents/DaVinci/tech-scout-reports` | Report output directory |
 
 ## Requirements
-- SearXNG running (see [web-intel-kit](https://github.com/ApeironOne/web-intel-kit))
-- `web_fetch` (built into OpenClaw)
-- `agent-browser` (`npm i -g agent-browser`)
+- SearXNG running (port 8890)
+- `web_fetch` tool (built into OpenClaw)
+- `agent-browser` CLI (`npm i -g agent-browser`)
 - `curl`, `python3`
